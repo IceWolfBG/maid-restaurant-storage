@@ -6,8 +6,10 @@ import com.example.maidrestaurant.rscompat.util.MaidReflectionUtils;
 import com.example.maidrestaurant.rscompat.util.StorageSearchCache;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mastermarisa.maid_restaurant.api.StepResult;
+import com.mastermarisa.maid_restaurant.maid.task.cook.MaidApproachCookBlockTask;
 import com.mastermarisa.maid_restaurant.maid.task.cook.MaidGetFromStorageTask;
 import com.mastermarisa.maid_restaurant.utils.BehaviorUtils;
+import com.mastermarisa.maid_restaurant.utils.CheckRateManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.behavior.BlockPosTracker;
@@ -185,6 +187,9 @@ public abstract class MaidGetFromStorageTaskMixin {
             // 清除 WALK_TARGET 和 LOOK_TARGET 记忆，避免女仆继续往流体存储位置（如水槽）寻路
             maid.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
             maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+            // 设置下一次检查的tick为5，让女仆取完水后马上就能重新检查任务，避免"楞一下"
+            CheckRateManager.setNextCheckTick(maid.getUUID() + MaidGetFromStorageTask.UID, 5);
+            CheckRateManager.setNextCheckTick(maid.getUUID() + MaidApproachCookBlockTask.UID, 5);
             ci.cancel();
         } catch (Throwable t) {
             LOGGER.error("Fluid fill (priority) error", t);
