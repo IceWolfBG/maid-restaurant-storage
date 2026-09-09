@@ -7,7 +7,7 @@ version = "${minecraft_version}-${mod_version}"
 group = mod_group_id
 
 base {
-    archivesName = mod_id
+    archivesName = "[女仆餐厅：存储]" + mod_id
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
