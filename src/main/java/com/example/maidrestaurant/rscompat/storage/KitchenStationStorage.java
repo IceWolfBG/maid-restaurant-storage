@@ -2,20 +2,19 @@ package com.example.maidrestaurant.rscompat.storage;
 
 import com.example.maidrestaurant.rscompat.config.CompatConfig;
 import com.mastermarisa.maid_restaurant.api.IMaidStorage;
-import com.refinedmods.refinedstorage.api.network.INetwork;
-import com.refinedmods.refinedstorage.api.util.Action;
-import com.refinedmods.refinedstorage.api.util.IStackList;
-import com.refinedmods.refinedstorage.api.util.StackListEntry;
-import dev.smolinacadena.refinedcooking.RefinedCookingBlocks;
-import dev.smolinacadena.refinedcooking.blockentity.KitchenStationBlockEntity;
-import dev.smolinacadena.refinedcooking.network.KitchenStationNetworkNode;
+import com.refinedmods.refinedstorage.api.core.Action;
+import com.refinedmods.refinedstorage.api.network.Network;
+import com.refinedmods.refinedstorage.api.network.storage.StorageNetworkComponent;
+import com.refinedmods.refinedstorage.api.storage.Actor;
+import com.refinedmods.refinedstorage.api.storage.TrackedResourceAmount;
+import com.refinedmods.refinedstorage.common.support.resource.ItemResource;
+import sebastrn.refinedcooking.RefinedCookingBlocks;
+import sebastrn.refinedcooking.blockentity.KitchenStationBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -33,7 +32,11 @@ public class KitchenStationStorage implements IMaidStorage {
 
     @Override
     public ItemStack getIcon() {
-        return new ItemStack((ItemLike) RefinedCookingBlocks.KITCHEN_STATION.get());
+        try {
+            return new ItemStack(RefinedCookingBlocks.KITCHEN_STATION.get());
+        } catch (Exception e) {
+            return ItemStack.EMPTY;
+        }
     }
 
     @Override
@@ -51,7 +54,7 @@ public class KitchenStationStorage implements IMaidStorage {
         if (!CompatConfig.isRsCompatEnabled()) {
             return null;
         }
-        INetwork network = getNetwork(level, pos);
+        Network network = getNetwork(level, pos);
         if (network != null) {
             return new RefinedStorageItemHandler(network);
         }
@@ -62,41 +65,61 @@ public class KitchenStationStorage implements IMaidStorage {
      * 从厨房站获取已连接的 RS 网络。
      */
     @Nullable
-    private INetwork getNetwork(Level level, BlockPos pos) {
+    private Network getNetwork(Level level, BlockPos pos) {
         BlockEntity be = level.getBlockEntity(pos);
         if (be instanceof KitchenStationBlockEntity station) {
-            KitchenStationNetworkNode node = station.getNode();
-            if (node != null) {
-                return node.getNetwork();
-            }
+            return station.getNetwork();
         }
         return null;
     }
 
     @Override
     public ItemStack extract(Level level, BlockPos pos, int slot, int amount, boolean simulate) {
-        INetwork network = getNetwork(level, pos);
+        Network network = getNetwork(level, pos);
         if (network == null) {
             return ItemStack.EMPTY;
         }
-        // 直接从 RS 网络按槽位提取物品（实时获取列表，确保槽位对应正确）
-        IStackList<ItemStack> list = network.getItemStorageCache().getList();
-        int index = 0;
-        for (StackListEntry<ItemStack> entry : list.getStacks()) {
-            if (index == slot) {
-                return network.extractItem(entry.getStack(), amount, simulate ? Action.SIMULATE : Action.PERFORM);
+        try {
+            StorageNetworkComponent storage = network.getComponent(StorageNetworkComponent.class);
+            if (storage == null) return ItemStack.EMPTY;
+            var resources = storage.getResources(Actor.class);
+            int index = 0;
+            for (TrackedResourceAmount tracked : resources) {
+                if (index == slot) {
+                    if (tracked.resourceAmount().resource() instanceof ItemResource itemResource) {
+                        long extracted = storage.extract(itemResource, amount, simulate ? Action.SIMULATE : Action.EXECUTE, Actor.EMPTY);
+                        if (extracted > 0) {
+                            return itemResource.toItemStack(extracted);
+                        }
+                    }
+                    return ItemStack.EMPTY;
+                }
+                index++;
             }
-            index++;
+        } catch (Exception e) {
+            // 忽略异常
         }
         return ItemStack.EMPTY;
     }
 
     @Override
     public ItemStack insert(Level level, BlockPos pos, ItemStack stack, boolean simulate) {
-        INetwork network = getNetwork(level, pos);
+        Network network = getNetwork(level, pos);
         if (network != null) {
-            ItemStack remainder = network.insertItem(stack, stack.getCount(), simulate ? Action.SIMULATE : Action.PERFORM);
-            return remainder;
+            try {
+                StorageNetworkComponent storage = network.getComponent(StorageNetworkComponent.class);
+                if (storage == null) return stack;
+                ItemResource resource = ItemResource.ofItemStack(stack);
+                long inserted = storage.insert(resource, stack.getCount(), simulate ? Action.SIMULATE : Action.EXECUTE, Actor.EMPTY);
+                if (inserted >= stack.getCount()) {
+                    return ItemStack.EMPTY;
+                }
+                ItemStack remainder = stack.copy();
+                remainder.setCount((int) (stack.getCount() - inserted));
+                return remainder;
+            } catch (Exception e) {
+                return stack;
+            }
         }
         return stack;
     }

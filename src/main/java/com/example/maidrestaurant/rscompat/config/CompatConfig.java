@@ -1,12 +1,12 @@
 package com.example.maidrestaurant.rscompat.config;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.ModConfigSpec;
+import net.neoforged.fml.ModLoadingContext;
+import net.neoforged.fml.config.ModConfig;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,17 +18,17 @@ import java.util.List;
  */
 public class CompatConfig {
 
-    public static final ForgeConfigSpec SPEC;
-    public static final ForgeConfigSpec.BooleanValue RS_COMPAT_ENABLED;
-    public static final ForgeConfigSpec.BooleanValue FLUID_SEARCH_ENABLED;
-    public static final ForgeConfigSpec.BooleanValue RS_DISK_DRIVE_ENABLED;
-    public static final ForgeConfigSpec.BooleanValue AE2_DISK_DRIVE_ENABLED;
-    public static final ForgeConfigSpec.BooleanValue INTERACTIVE_WHITELIST;
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> CONTAINER_WHITELIST;
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BLACKLIST;
+    public static final ModConfigSpec SPEC;
+    public static final ModConfigSpec.BooleanValue RS_COMPAT_ENABLED;
+    public static final ModConfigSpec.BooleanValue FLUID_SEARCH_ENABLED;
+    public static final ModConfigSpec.BooleanValue RS_DISK_DRIVE_ENABLED;
+    public static final ModConfigSpec.BooleanValue AE2_DISK_DRIVE_ENABLED;
+    public static final ModConfigSpec.BooleanValue INTERACTIVE_WHITELIST;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> CONTAINER_WHITELIST;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> BLACKLIST;
 
     static {
-        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
         builder.push("compat");
 
@@ -83,7 +83,12 @@ public class CompatConfig {
     }
 
     public static void register() {
-        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, SPEC);
+        try {
+            net.neoforged.fml.ModContainer container = net.neoforged.fml.ModLoadingContext.get().getActiveContainer();
+            container.registerConfig(ModConfig.Type.SERVER, SPEC);
+        } catch (Exception e) {
+            // 忽略注册失败
+        }
     }
 
     public static boolean isRsCompatEnabled() {
@@ -113,7 +118,7 @@ public class CompatConfig {
     }
 
     public static boolean isInWhitelist(Block block) {
-        ResourceLocation key = ForgeRegistries.BLOCKS.getKey(block);
+        ResourceLocation key = BuiltInRegistries.BLOCK.getKey(block);
         return key != null && isInWhitelist(key.toString());
     }
 
@@ -128,7 +133,7 @@ public class CompatConfig {
     }
 
     public static boolean isBlacklisted(Block block) {
-        ResourceLocation key = ForgeRegistries.BLOCKS.getKey(block);
+        ResourceLocation key = BuiltInRegistries.BLOCK.getKey(block);
         return key != null && isBlacklisted(key.toString());
     }
 
@@ -141,7 +146,7 @@ public class CompatConfig {
     }
 
     public static boolean isContainerAllowed(Block block) {
-        ResourceLocation key = ForgeRegistries.BLOCKS.getKey(block);
+        ResourceLocation key = BuiltInRegistries.BLOCK.getKey(block);
         return key != null && isContainerAllowed(key.toString());
     }
 

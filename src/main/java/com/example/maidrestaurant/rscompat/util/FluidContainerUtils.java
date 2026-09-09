@@ -1,12 +1,13 @@
 package com.example.maidrestaurant.rscompat.util;
 
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidType;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.FluidType;
 
 /**
  * 流体容器工具类。
@@ -26,7 +27,9 @@ public class FluidContainerUtils {
     }
 
     public static boolean isWaterBottle(ItemStack stack) {
-        return stack.getItem() == Items.POTION && PotionUtils.getPotion(stack) == Potions.WATER;
+        if (stack.getItem() != Items.POTION) return false;
+        PotionContents contents = stack.get(DataComponents.POTION_CONTENTS);
+        return contents != null && contents.potion().isPresent() && contents.potion().get() == Potions.WATER;
     }
 
     public static FluidStack getRequiredFluid(ItemStack container) {
@@ -66,7 +69,9 @@ public class FluidContainerUtils {
         }
         if (item == Items.GLASS_BOTTLE) {
             if (fluid.getFluid() == net.minecraft.world.level.material.Fluids.WATER) {
-                return PotionUtils.setPotion(new ItemStack(Items.POTION), Potions.WATER);
+                ItemStack potion = new ItemStack(Items.POTION);
+                potion.set(DataComponents.POTION_CONTENTS, new PotionContents(Potions.WATER));
+                return potion;
             }
         }
         return ItemStack.EMPTY;

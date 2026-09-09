@@ -6,9 +6,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 import org.jetbrains.annotations.Nullable;
 import vectorwing.farmersdelight.common.block.entity.CabinetBlockEntity;
 
@@ -41,7 +42,8 @@ public class FarmersDelightStorage implements IMaidStorage {
     public IItemHandler getHandler(Level level, BlockPos pos) {
         BlockEntity be = level.getBlockEntity(pos);
         if (be instanceof CabinetBlockEntity) {
-            return be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
+            BlockState state = level.getBlockState(pos);
+            return level.getCapability(Capabilities.ItemHandler.BLOCK, pos, state, be, null);
         }
         return null;
     }

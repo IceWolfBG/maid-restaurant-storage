@@ -1,11 +1,13 @@
 package com.example.maidrestaurant.rscompat.storage;
 
-import com.refinedmods.refinedstorage.api.network.INetwork;
-import com.refinedmods.refinedstorage.api.util.Action;
-import com.refinedmods.refinedstorage.api.util.IStackList;
-import com.refinedmods.refinedstorage.api.util.StackListEntry;
+import com.refinedmods.refinedstorage.api.core.Action;
+import com.refinedmods.refinedstorage.api.network.Network;
+import com.refinedmods.refinedstorage.api.network.storage.StorageNetworkComponent;
+import com.refinedmods.refinedstorage.api.storage.Actor;
+import com.refinedmods.refinedstorage.api.storage.TrackedResourceAmount;
+import com.refinedmods.refinedstorage.common.support.resource.ItemResource;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.IItemHandler;
+import net.neoforged.neoforge.items.IItemHandler;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -17,9 +19,9 @@ import java.util.List;
  */
 public class RefinedStorageItemHandler implements IItemHandler {
 
-    private final INetwork network;
+    private final Network network;
 
-    public RefinedStorageItemHandler(INetwork network) {
+    public RefinedStorageItemHandler(Network network) {
         this.network = network;
     }
 
@@ -31,9 +33,17 @@ public class RefinedStorageItemHandler implements IItemHandler {
         if (network == null) {
             return result;
         }
-        IStackList<ItemStack> list = network.getItemStorageCache().getList();
-        for (StackListEntry<ItemStack> entry : list.getStacks()) {
-            result.add(entry.getStack().copy());
+        try {
+            StorageNetworkComponent storage = network.getComponent(StorageNetworkComponent.class);
+            if (storage == null) return result;
+            List<TrackedResourceAmount> resources = storage.getResources(Actor.class);
+            for (TrackedResourceAmount tracked : resources) {
+                if (tracked.resourceAmount().resource() instanceof ItemResource itemResource) {
+                    result.add(itemResource.toItemStack(tracked.resourceAmount().amount()));
+                }
+            }
+        } catch (Exception e) {
+            // 忽略异常，返回空列表
         }
         return result;
     }
@@ -59,8 +69,20 @@ public class RefinedStorageItemHandler implements IItemHandler {
         if (stack.isEmpty() || network == null) {
             return stack;
         }
-        // RS 是统一存储，忽略槽位参数，直接插入网络
-        return network.insertItem(stack, stack.getCount(), simulate ? Action.SIMULATE : Action.PERFORM);
+        try {
+            StorageNetworkComponent storage = network.getComponent(StorageNetworkComponent.class);
+            if (storage == null) return stack;
+            ItemResource resource = ItemResource.ofItemStack(stack);
+            long inserted = storage.insert(resource, stack.getCount(), simulate ? Action.SIMULATE : Action.EXECUTE, Actor.EMPTY);
+            if (inserted >= stack.getCount()) {
+                return ItemStack.EMPTY;
+            }
+            ItemStack remainder = stack.copy();
+            remainder.setCount((int) (stack.getCount() - inserted));
+            return remainder;
+        } catch (Exception e) {
+            return stack;
+        }
     }
 
     @Nonnull
@@ -77,7 +99,20 @@ public class RefinedStorageItemHandler implements IItemHandler {
         if (type.isEmpty()) {
             return ItemStack.EMPTY;
         }
-        return network.extractItem(type, amount, simulate ? Action.SIMULATE : Action.PERFORM);
+        try {
+            StorageNetworkComponent storage = network.getComponent(StorageNetworkComponent.class);
+            if (storage == null) return ItemStack.EMPTY;
+            ItemResource resource = ItemResource.ofItemStack(type);
+            long extracted = storage.extract(resource, amount, simulate ? Action.SIMULATE : Action.EXECUTE, Actor.EMPTY);
+            if (extracted <= 0) {
+                return ItemStack.EMPTY;
+            }
+            ItemStack result = type.copy();
+            result.setCount((int) extracted);
+            return result;
+        } catch (Exception e) {
+            return ItemStack.EMPTY;
+        }
     }
 
     @Override

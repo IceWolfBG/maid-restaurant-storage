@@ -8,9 +8,9 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -45,7 +45,7 @@ public class WhitelistStorage implements IMaidStorage {
         if (CompatConfig.isBlacklisted(state)) return null;
         BlockEntity be = level.getBlockEntity(pos);
         if (be != null) {
-            return be.getCapability(ForgeCapabilities.ITEM_HANDLER).resolve().orElse(null);
+            return level.getCapability(Capabilities.ItemHandler.BLOCK, pos, state, be, null);
         }
         return null;
     }

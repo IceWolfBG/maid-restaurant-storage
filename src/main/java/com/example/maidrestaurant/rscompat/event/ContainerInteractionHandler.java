@@ -7,6 +7,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -17,18 +18,18 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.common.Mod;
 
 /**
  * 玩家交互事件监听器：
  * 1. 手持容器方块 Shift+右键：一键加入/移出白名单
  * 2. 命令：/maidstorage 管理白名单/黑名单
  */
-@Mod.EventBusSubscriber(modid = "maid_restaurant_storage", bus = Mod.EventBusSubscriber.Bus.FORGE)
+@EventBusSubscriber(modid = "maid_restaurant_storage", bus = EventBusSubscriber.Bus.GAME)
 public class ContainerInteractionHandler {
 
     @SubscribeEvent
@@ -40,13 +41,13 @@ public class ContainerInteractionHandler {
 
         ItemStack held = event.getItemStack();
         // 仅手持女仆餐厅菜单（maid_restaurant:order_menu）时触发白名单管理
-        if (held.isEmpty() || !held.is(net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(
-                new ResourceLocation("maid_restaurant", "order_menu")))) return;
+        if (held.isEmpty() || !held.is(BuiltInRegistries.ITEM.get(
+                ResourceLocation.fromNamespaceAndPath("maid_restaurant", "order_menu")))) return;
 
         // 获取玩家右键的方块
         BlockPos pos = event.getPos();
         BlockState state = event.getLevel().getBlockState(pos);
-        ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(state.getBlock());
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         if (blockId == null) return;
 
         String blockIdStr = blockId.toString();
@@ -194,7 +195,7 @@ public class ContainerInteractionHandler {
                     if (state.isAir()) continue;
                     scanned++;
 
-                    ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(state.getBlock());
+                    ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(state.getBlock());
                     if (blockId == null) continue;
                     String blockIdStr = blockId.toString();
                     if (CompatConfig.isInWhitelist(blockIdStr) || CompatConfig.isBlacklisted(blockIdStr)) continue;
@@ -204,8 +205,8 @@ public class ContainerInteractionHandler {
                     net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(pos);
                     if (be == null) continue;
 
-                    boolean hasItemHandler = be.getCapability(net.minecraftforge.common.capabilities.ForgeCapabilities.ITEM_HANDLER, null).resolve().isPresent();
-                    boolean hasFluidHandler = be.getCapability(net.minecraftforge.common.capabilities.ForgeCapabilities.FLUID_HANDLER, null).resolve().isPresent();
+                    boolean hasItemHandler = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, pos, state, be, null) != null;
+                    boolean hasFluidHandler = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.FluidHandler.BLOCK, pos, state, be, null) != null;
 
                     if (hasItemHandler || hasFluidHandler) {
                         CompatConfig.addToWhitelist(blockIdStr);

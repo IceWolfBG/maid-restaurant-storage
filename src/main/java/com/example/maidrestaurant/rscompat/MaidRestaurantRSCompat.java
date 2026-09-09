@@ -12,11 +12,10 @@ import com.example.maidrestaurant.rscompat.storage.KitchenStationStorage;
 import com.example.maidrestaurant.rscompat.storage.RSDiskDriveStorage;
 import com.example.maidrestaurant.rscompat.storage.WhitelistStorage;
 import com.mastermarisa.maid_restaurant.utils.MaidStorages;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModList;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -39,8 +38,7 @@ public class MaidRestaurantRSCompat {
     public static final String MOD_ID = "maid_restaurant_storage";
     public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
 
-    public MaidRestaurantRSCompat() {
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+    public MaidRestaurantRSCompat(IEventBus modEventBus) {
         modEventBus.addListener(this::commonSetup);
         CompatConfig.register();
         LOGGER.info("MaidRestaurantStorage initialized");

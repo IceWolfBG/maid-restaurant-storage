@@ -5,9 +5,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -37,7 +37,7 @@ public class WhitelistFluidStorage implements IMaidFluidStorage {
         if (CompatConfig.isBlacklisted(state)) return null;
         BlockEntity be = level.getBlockEntity(pos);
         if (be != null) {
-            return be.getCapability(ForgeCapabilities.FLUID_HANDLER).resolve().orElse(null);
+            return level.getCapability(Capabilities.FluidHandler.BLOCK, pos, state, be, null);
         }
         return null;
     }

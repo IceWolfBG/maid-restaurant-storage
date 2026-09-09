@@ -3,7 +3,7 @@ package com.github.tartaricacid.touhoulittlemaid.entity.passive;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.items.IItemHandler;
+import net.neoforged.neoforge.items.IItemHandler;
 
 /**
  * 编译用 stub 类，仅用于编译期类型引用。

@@ -14,15 +14,17 @@ import com.mastermarisa.maid_restaurant.utils.component.StackPredicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.world.item.crafting.Recipe;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -48,10 +50,10 @@ public class FluidSearchHelper {
             if (request == null) return null;
 
             ICookTask iCookTask = CookTasks.getTask(request.type);
-            Recipe<?> recipe = level.getRecipeManager().byKey(request.id).orElse(null);
-            if (recipe == null) return null;
+            RecipeHolder<?> recipeHolder = level.getRecipeManager().byKey(request.id).orElse(null);
+            if (recipeHolder == null) return null;
 
-            List<StackPredicate> required = iCookTask.getIngredients(recipe, level);
+            List<StackPredicate> required = iCookTask.getIngredients(recipeHolder, level);
             IItemHandler maidInv = MaidReflectionUtils.getAvailableInv(maid);
             if (maidInv == null) return null;
 
@@ -131,10 +133,10 @@ public class FluidSearchHelper {
             if (request == null) return false;
 
             ICookTask iCookTask = CookTasks.getTask(request.type);
-            Recipe<?> recipe = level.getRecipeManager().byKey(request.id).orElse(null);
-            if (recipe == null) return false;
+            RecipeHolder<?> recipeHolder = level.getRecipeManager().byKey(request.id).orElse(null);
+            if (recipeHolder == null) return false;
 
-            List<StackPredicate> required = iCookTask.getIngredients(recipe, level);
+            List<StackPredicate> required = iCookTask.getIngredients(recipeHolder, level);
             boolean filledAny = false;
 
             for (StackPredicate predicate : required) {
@@ -216,10 +218,12 @@ public class FluidSearchHelper {
     }
 
     private static ItemStack findSampleForPredicate(StackPredicate predicate) {
+        ItemStack waterPotion = new ItemStack(Items.POTION);
+        waterPotion.set(DataComponents.POTION_CONTENTS, new PotionContents(Potions.WATER));
         ItemStack[] candidates = {
                 new ItemStack(Items.WATER_BUCKET),
                 new ItemStack(Items.LAVA_BUCKET),
-                PotionUtils.setPotion(new ItemStack(Items.POTION), Potions.WATER)
+                waterPotion
         };
         for (ItemStack candidate : candidates) {
             if (predicate.test(candidate)) return candidate;
