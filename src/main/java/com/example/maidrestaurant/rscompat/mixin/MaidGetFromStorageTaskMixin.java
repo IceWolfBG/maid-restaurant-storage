@@ -11,6 +11,7 @@ import com.mastermarisa.maid_restaurant.utils.BehaviorUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.behavior.BlockPosTracker;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraftforge.items.IItemHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,7 +26,7 @@ import java.util.UUID;
 /**
  * Mixin 注入到 MaidGetFromStorageTask。
  *
- * 性能优化：
+ * 功能：
  * 1. 搜索结果缓存（方案四）：缓存最近一次搜索找到的容器位置，10 tick 内重复搜索直接返回缓存。
  * 2. containsRequired 结果缓存（方案二）：缓存容器检查结果，避免重复遍历所有 slot。
  * 3. 流体优先逻辑：如果女仆需要流体容器且背包有空容器，且周围有流体存储，则将目标覆盖为流体存储位置。
@@ -51,7 +52,7 @@ public abstract class MaidGetFromStorageTaskMixin {
             if (cachedPos != null) {
                 // 缓存命中，直接设置目标位置并返回 true
                 BehaviorUtils.setTargetPos(maid, new BlockPosTracker(cachedPos), 0);
-                BehaviorUtils.setWalkAndLookTargetMemories(maid, cachedPos, cachedPos, 0.5f, 0);
+                BehaviorUtils.setWalkAndLookTargetMemories(maid, cachedPos, cachedPos, 0.5f, 1);
                 cir.setReturnValue(true);
             }
         } catch (Throwable t) {
@@ -69,18 +70,18 @@ public abstract class MaidGetFromStorageTaskMixin {
                                                          CallbackInfoReturnable<Boolean> cir) {
         try {
             // 流体优先逻辑（保留原有功能）
-            if (!CompatConfig.isFluidSearchEnabled()) return;
-            if (!cir.getReturnValue()) return; // 搜索失败时不覆盖
+            if (CompatConfig.isFluidSearchEnabled() && cir.getReturnValue()) {
+                BlockPos fluidPos = FluidSearchHelper.findNearestFluidStorage(level, maid);
+                if (fluidPos != null) {
+                    LOGGER.info("Fluid search (priority): overriding target to fluid storage at {}", fluidPos);
+                    BehaviorUtils.setTargetPos(maid, new BlockPosTracker(fluidPos), 0);
+                    BehaviorUtils.setWalkAndLookTargetMemories(maid, fluidPos, fluidPos, 0.5f, 1);
 
-            BlockPos fluidPos = FluidSearchHelper.findNearestFluidStorage(level, maid);
-            if (fluidPos == null) return;
-
-            LOGGER.info("Fluid search (priority): overriding target to fluid storage at {}", fluidPos);
-            BehaviorUtils.setTargetPos(maid, new BlockPosTracker(fluidPos), 0);
-            BehaviorUtils.setWalkAndLookTargetMemories(maid, fluidPos, fluidPos, 0.5f, 0);
-
-            // 更新搜索结果缓存为流体存储位置
-            StorageSearchCache.setSearchResult(maid.getUUID(), fluidPos, level.getGameTime());
+                    // 更新搜索结果缓存为流体存储位置
+                    StorageSearchCache.setSearchResult(maid.getUUID(), fluidPos, level.getGameTime());
+                    return;
+                }
+            }
         } catch (Throwable t) {
             LOGGER.error("Fluid search (priority) error", t);
         }
@@ -181,6 +182,9 @@ public abstract class MaidGetFromStorageTaskMixin {
 
             LOGGER.info("Fluid fill (priority): success at {}", targetPos);
             BehaviorUtils.eraseTargetPos(maid);
+            // 清除 WALK_TARGET 和 LOOK_TARGET 记忆，避免女仆继续往流体存储位置（如水槽）寻路
+            maid.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+            maid.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
             ci.cancel();
         } catch (Throwable t) {
             LOGGER.error("Fluid fill (priority) error", t);

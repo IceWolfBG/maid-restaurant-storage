@@ -13,6 +13,7 @@ import com.mastermarisa.maid_restaurant.utils.SearchUtils;
 import com.mastermarisa.maid_restaurant.utils.component.StackPredicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -176,6 +177,8 @@ public class FluidSearchHelper {
                     MaidReflectionUtils.spawnAtLocation(maid, remainder);
                 }
                 LOGGER.info("Fluid fill: success {}", filled.getItem());
+                // 触发手臂摆动动画，让玩家知道女仆正在取水（与女仆餐厅拿取食材时使用相同的动画）
+                maid.swing(InteractionHand.OFF_HAND);
                 filledAny = true;
             }
             return filledAny;
