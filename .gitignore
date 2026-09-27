@@ -3,3 +3,6 @@ build/
 run/
 *.class
 *.log
+libs/
+releases/
+build_out.txt

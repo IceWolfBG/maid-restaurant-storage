@@ -20,6 +20,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
@@ -32,12 +33,12 @@ import net.neoforged.fml.common.Mod;
 @EventBusSubscriber(modid = "maid_restaurant_storage", bus = EventBusSubscriber.Bus.GAME)
 public class ContainerInteractionHandler {
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         if (event.getLevel().isClientSide) return;
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         if (!player.isShiftKeyDown()) return;
-        if (!CompatConfig.isInteractiveWhitelistEnabled()) return;
+        if (!CompatConfig.isInteractiveWhitelistEnabledSafe()) return;
 
         ItemStack held = event.getItemStack();
         // 仅手持女仆餐厅菜单（maid_restaurant:order_menu）时触发白名单管理
@@ -52,27 +53,34 @@ public class ContainerInteractionHandler {
 
         String blockIdStr = blockId.toString();
 
-        // 三态循环：无 → 白名单 → 黑名单 → 无
-        if (CompatConfig.isBlacklisted(blockIdStr)) {
-            // 在黑名单中，移出黑名单（回到无状态）
-            CompatConfig.removeFromBlacklist(blockIdStr);
-            player.displayClientMessage(Component.literal("[储存] 已从黑名单移除: " + blockIdStr)
-                    .withStyle(ChatFormatting.YELLOW), false);
-        } else if (CompatConfig.isInWhitelist(blockIdStr)) {
-            // 在白名单中，移到黑名单
-            CompatConfig.removeFromWhitelist(blockIdStr);
-            CompatConfig.addToBlacklist(blockIdStr);
-            player.displayClientMessage(Component.literal("[储存] 已移至黑名单: " + blockIdStr)
-                    .withStyle(ChatFormatting.RED), false);
-        } else {
-            // 不在任何名单中，加入白名单
-            CompatConfig.addToWhitelist(blockIdStr);
-            player.displayClientMessage(Component.literal("[储存] 已加入白名单: " + blockIdStr)
-                    .withStyle(ChatFormatting.GREEN), false);
+        // 识别为“菜单管理交互”后，无论后续读写是否异常都必须取消事件（finally），
+        // 否则女仆餐厅本体会把该方块误设为上餐点。
+        try {
+            // 三态循环：无 → 白名单 → 黑名单 → 无
+            if (CompatConfig.isBlacklistedSafe(blockIdStr)) {
+                // 在黑名单中，移出黑名单（回到无状态）
+                CompatConfig.removeFromBlacklist(blockIdStr);
+                player.displayClientMessage(Component.literal("[储存] 已从黑名单移除: " + blockIdStr)
+                        .withStyle(ChatFormatting.YELLOW), false);
+            } else if (CompatConfig.isInWhitelistSafe(blockIdStr)) {
+                // 在白名单中，移到黑名单
+                CompatConfig.removeFromWhitelist(blockIdStr);
+                CompatConfig.addToBlacklist(blockIdStr);
+                player.displayClientMessage(Component.literal("[储存] 已移至黑名单: " + blockIdStr)
+                        .withStyle(ChatFormatting.RED), false);
+            } else {
+                // 不在任何名单中，加入白名单
+                CompatConfig.addToWhitelist(blockIdStr);
+                player.displayClientMessage(Component.literal("[储存] 已加入白名单: " + blockIdStr)
+                        .withStyle(ChatFormatting.GREEN), false);
+            }
+        } catch (Throwable t) {
+            com.example.maidrestaurant.rscompat.MaidRestaurantRSCompat.LOGGER.error(
+                    "[储存] 菜单交互处理异常，已拦截以防误设为上餐点: " + blockIdStr, t);
+        } finally {
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.SUCCESS);
         }
-
-        event.setCanceled(true);
-        event.setCancellationResult(InteractionResult.SUCCESS);
     }
 
     @SubscribeEvent

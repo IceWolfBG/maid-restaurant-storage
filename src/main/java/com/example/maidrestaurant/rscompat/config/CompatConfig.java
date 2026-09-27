@@ -21,6 +21,8 @@ public class CompatConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.BooleanValue RS_COMPAT_ENABLED;
     public static final ModConfigSpec.BooleanValue FLUID_SEARCH_ENABLED;
+    public static final ModConfigSpec.BooleanValue WORLD_FLUID_SOURCES_ENABLED;
+    public static final ModConfigSpec.BooleanValue AUTO_FILL_SINK;
     public static final ModConfigSpec.BooleanValue RS_DISK_DRIVE_ENABLED;
     public static final ModConfigSpec.BooleanValue AE2_DISK_DRIVE_ENABLED;
     public static final ModConfigSpec.BooleanValue INTERACTIVE_WHITELIST;
@@ -42,6 +44,18 @@ public class CompatConfig {
                         "若背包有空容器且周围有流体存储，会自动前往接取流体",
                         "默认: true")
                 .define("fluid_search", true);
+
+        WORLD_FLUID_SOURCES_ENABLED = builder
+                .comment("是否允许女仆直接从世界中的流体源方块（河水/湖水/天然岩浆等）取水或岩浆",
+                        "关闭时只使用玩家放置的炼药锅、水槽等容器，可避免女仆跑到河里取水淹死",
+                        "默认: false")
+                .define("allow_world_fluid_sources", false);
+
+        AUTO_FILL_SINK = builder
+                .comment("是否允许女仆在水槽为空时，模拟玩家空手右键直接把水槽注满水，然后再舀水",
+                        "仅对烛火晚宴/馥郁烘焙等支持空手注水的水槽生效，且只产生水",
+                        "默认: true")
+                .define("auto_fill_sink", true);
 
         RS_DISK_DRIVE_ENABLED = builder
                 .comment("是否启用读取精致存储(RS)磁盘管理器中的物品",
@@ -99,6 +113,14 @@ public class CompatConfig {
         return FLUID_SEARCH_ENABLED.get();
     }
 
+    public static boolean isWorldFluidSourcesEnabled() {
+        return WORLD_FLUID_SOURCES_ENABLED.get();
+    }
+
+    public static boolean isAutoFillSinkEnabled() {
+        return AUTO_FILL_SINK.get();
+    }
+
     public static boolean isRsDiskDriveEnabled() {
         return RS_DISK_DRIVE_ENABLED.get();
     }
@@ -109,6 +131,45 @@ public class CompatConfig {
 
     public static boolean isInteractiveWhitelistEnabled() {
         return INTERACTIVE_WHITELIST.get();
+    }
+
+    /**
+     * 交互专用：配置处于重载窗口时 get() 可能抛异常，此时按默认 true 处理，
+     * 避免交互处理器提前 return、事件未取消而被女仆餐厅本体误设为上餐点。
+     */
+    public static boolean isInteractiveWhitelistEnabledSafe() {
+        try {
+            return INTERACTIVE_WHITELIST.get();
+        } catch (Throwable t) {
+            return true;
+        }
+    }
+
+    /** 安全快照：配置未加载/重载中时返回空列表而非抛异常。 */
+    private static List<String> safeList(ModConfigSpec.ConfigValue<List<? extends String>> value) {
+        List<String> out = new ArrayList<>();
+        try {
+            List<? extends String> v = value.get();
+            if (v != null) {
+                for (String s : v) if (s != null) out.add(s);
+            }
+        } catch (Throwable ignored) { }
+        return out;
+    }
+
+    public static boolean isInWhitelistSafe(String blockId) {
+        return safeList(CONTAINER_WHITELIST).contains(blockId);
+    }
+
+    public static boolean isBlacklistedSafe(String blockId) {
+        return safeList(BLACKLIST).contains(blockId);
+    }
+
+    /** 保存失败不应中断交互（内存值已更新，世界卸载时仍会落盘）。 */
+    private static void safeSave() {
+        try {
+            safeSave();
+        } catch (Throwable ignored) { }
     }
 
     // === 白名单 ===
@@ -162,7 +223,7 @@ public class CompatConfig {
         if (list.contains(blockId)) return false;
         list.add(blockId);
         CONTAINER_WHITELIST.set(list);
-        SPEC.save();
+        safeSave();
         return true;
     }
 
@@ -171,7 +232,7 @@ public class CompatConfig {
         List<String> list = new ArrayList<>((List<String>) CONTAINER_WHITELIST.get());
         if (!list.remove(blockId)) return false;
         CONTAINER_WHITELIST.set(list);
-        SPEC.save();
+        safeSave();
         return true;
     }
 
@@ -181,7 +242,7 @@ public class CompatConfig {
         if (list.contains(blockId)) return false;
         list.add(blockId);
         BLACKLIST.set(list);
-        SPEC.save();
+        safeSave();
         return true;
     }
 
@@ -190,7 +251,7 @@ public class CompatConfig {
         List<String> list = new ArrayList<>((List<String>) BLACKLIST.get());
         if (!list.remove(blockId)) return false;
         BLACKLIST.set(list);
-        SPEC.save();
+        safeSave();
         return true;
     }
 }

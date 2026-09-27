@@ -5,7 +5,7 @@ license="${mod_license}"
 [[mods]]
 modId="${mod_id}"
 version="${mod_version}"
-displayName="${mod_name}"
+displayName="[女仆餐厅：存储] Maid Restaurant: Storage (1.21.1 NeoForge)"
 authors="${mod_authors}"
 logoFile="logo.png"
 description='''
@@ -17,49 +17,49 @@ config="${mod_id}.mixins.json"
 
 [[dependencies.${mod_id}]]
     modId="neoforge"
-    mandatory=true
+    type="required"
     versionRange="${neo_version_range}"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
     modId="minecraft"
-    mandatory=true
+    type="required"
     versionRange="${minecraft_version_range}"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
     modId="maid_restaurant"
-    mandatory=true
+    type="required"
     versionRange="[0.2.9,)"
     ordering="AFTER"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
     modId="refinedstorage"
-    mandatory=false
+    type="optional"
     versionRange="*"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
     modId="refinedcooking"
-    mandatory=false
+    type="optional"
     versionRange="*"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
     modId="ironchest"
-    mandatory=false
+    type="optional"
     versionRange="*"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
     modId="farmersdelight"
-    mandatory=false
+    type="optional"
     versionRange="*"
     ordering="NONE"
     side="BOTH"

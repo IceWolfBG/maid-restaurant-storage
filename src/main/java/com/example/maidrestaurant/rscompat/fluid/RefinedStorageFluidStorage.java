@@ -14,6 +14,7 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Method;
 import java.util.List;
 
 /**
@@ -74,11 +75,51 @@ public class RefinedStorageFluidStorage implements IMaidFluidStorage {
         }
     }
 
+    /**
+     * 解析目标方块所属的 RS 网络。
+     * 1) 精致厨房厨房站；2) 任意 RS2 网络节点（流体网格/控制器/磁盘驱动器/线缆等）。
+     *
+     * RS2 节点 BE 的取网络方法 {@code getNetworkForItem()} 位于带 apiguardian 注解的
+     * common 类上，直接引用会让编译期缺注解 jar；这里反射调用，方法名在非混淆的 mod
+     * 类中稳定。
+     */
     @Nullable
     private Network getNetwork(Level level, BlockPos pos) {
         BlockEntity be = level.getBlockEntity(pos);
+        if (be == null) return null;
+
+        // 1) 精致厨房厨房站
         if (be instanceof KitchenStationBlockEntity station) {
-            return station.getNetwork();
+            Network n = station.getNetwork();
+            if (n != null) return n;
+        }
+
+        // 2) 任意 RS2 网络节点：反射调用 getNetworkForItem()
+        try {
+            Method m = findGetNetworkForItem(be.getClass());
+            if (m != null) {
+                Object n = m.invoke(be);
+                if (n instanceof Network network) return network;
+            }
+        } catch (Throwable ignored) {
+            // 无网络 / 不可访问时视为 null
+        }
+        return null;
+    }
+
+    /** 缓存：BE 类 -> getNetworkForItem 方法（找不到记 null 哨兵）。 */
+    @Nullable
+    private static Method findGetNetworkForItem(Class<?> clazz) {
+        for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+            try {
+                Method m = c.getDeclaredMethod("getNetworkForItem");
+                if (Network.class.isAssignableFrom(m.getReturnType())) {
+                    m.setAccessible(true);
+                    return m;
+                }
+            } catch (NoSuchMethodException ignored) {
+                // 继续往父类找
+            }
         }
         return null;
     }
