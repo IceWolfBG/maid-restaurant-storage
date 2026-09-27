@@ -5,7 +5,9 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "maid_restaurant_storage.refmap.json",
   "mixins": [
-    "MaidGetFromStorageTaskMixin"
+    "MaidGetFromStorageTaskMixin",
+    "MaidStoragesMixin",
+    "StockpotCookTaskMixin"
   ],
   "client": [],
   "server": [],

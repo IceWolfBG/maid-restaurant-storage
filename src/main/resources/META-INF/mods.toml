@@ -5,7 +5,7 @@ license="${mod_license}"
 [[mods]]
 modId="${mod_id}"
 version="${mod_version}"
-displayName="${mod_name}"
+displayName="[女仆餐厅：存储] Maid Restaurant: Storage (1.20.1 Forge)"
 authors="${mod_authors}"
 logoFile="logo.png"
 description='''

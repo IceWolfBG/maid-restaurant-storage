@@ -1,20 +1,26 @@
 package com.example.maidrestaurant.rscompat.fluid;
 
 import com.refinedmods.refinedstorage.api.network.INetwork;
+import com.refinedmods.refinedstorage.api.network.node.INetworkNode;
+import com.refinedmods.refinedstorage.api.network.node.INetworkNodeProxy;
 import com.refinedmods.refinedstorage.api.util.Action;
 import com.refinedmods.refinedstorage.api.util.IStackList;
 import com.refinedmods.refinedstorage.api.util.StackListEntry;
+import com.refinedmods.refinedstorage.capability.NetworkNodeProxyCapability;
 import dev.smolinacadena.refinedcooking.blockentity.KitchenStationBlockEntity;
 import dev.smolinacadena.refinedcooking.network.KitchenStationNetworkNode;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * 通过精致厨房厨房站访问 RS 流体网络。
+ * 通过 RS 网络访问流体：支持精致厨房厨房站，以及任意 RS 网络节点
+ * （流体网格、控制器、磁盘驱动器、线缆等）。右键这些方块只会打开 GUI，
+ * 女仆装桶走 {@link #extract}（network.extractFluid）路径。
  */
 public class RefinedStorageFluidStorage implements IMaidFluidStorage {
 
@@ -61,12 +67,35 @@ public class RefinedStorageFluidStorage implements IMaidFluidStorage {
         return total;
     }
 
+    /**
+     * 解析目标方块所属的 RS 网络。
+     * 1) 精致厨房厨房站；2) 任意 RS 网络节点（流体网格/控制器/磁盘驱动器/线缆等）。
+     */
     @Nullable
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private INetwork getNetwork(Level level, BlockPos pos) {
         BlockEntity be = level.getBlockEntity(pos);
+        if (be == null) return null;
+
+        // 1) 精致厨房厨房站
         if (be instanceof KitchenStationBlockEntity station) {
             KitchenStationNetworkNode node = station.getNode();
-            if (node != null) return node.getNetwork();
+            if (node != null && node.getNetwork() != null) return node.getNetwork();
+        }
+
+        // 2) 任意 RS 网络节点：经节点代理能力取 node.getNetwork()
+        LazyOptional<INetworkNodeProxy> cap = be.getCapability(
+                NetworkNodeProxyCapability.NETWORK_NODE_PROXY_CAPABILITY, null);
+        if (cap.isPresent()) {
+            try {
+                INetworkNodeProxy proxy = cap.orElse(null);
+                if (proxy != null) {
+                    INetworkNode node = proxy.getNode();
+                    if (node != null && node.getNetwork() != null) return node.getNetwork();
+                }
+            } catch (Throwable ignored) {
+                // getNode() 在无节点时按契约抛异常，视为无网络
+            }
         }
         return null;
     }
